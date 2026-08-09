@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NEXORA Tecnología</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#071018;color:#fff}
+header{text-align:center;padding:38px 20px;background:linear-gradient(135deg,#071018,#162733)}
+h1{margin:0 0 8px;font-size:38px}header p{color:#cbd5da}
+.wrap{max-width:1200px;margin:auto;padding:30px 20px}
+.toolbar{text-align:right;margin-bottom:20px}
+button{border:0;border-radius:8px;padding:10px 14px;font-weight:bold;cursor:pointer}
+.admin{background:#fff;color:#111}.save{background:#21e875;color:#071018}.danger{background:#ff5c5c;color:#fff}.cancel{background:#34444d;color:#fff}
+.panel{background:#0c1720;border:1px solid #304653;border-radius:14px;padding:20px;margin-bottom:25px}
+.hidden{display:none}.formgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+label{display:block;font-size:13px;color:#b9c6ce;margin-bottom:5px}
+input,textarea{width:100%;padding:10px;border-radius:8px;border:1px solid #40525d;background:#071018;color:#fff}
+textarea{min-height:80px}
+.imagePaste{border:2px dashed #40525d;border-radius:10px;padding:16px;text-align:center;background:#071018;color:#b9c6ce;cursor:text;margin-top:8px}
+.imagePaste:focus{outline:2px solid #21e875}
+.imagePreview{display:flex;gap:10px;align-items:center;margin-top:10px}
+.imagePreview img{width:90px;height:90px;object-fit:cover;border-radius:8px;border:1px solid #40525d}
+.imagePreview button{background:#ff5c5c;color:#fff}
+.actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:22px}
+.card{background:#0c1720;border:1px solid #243642;border-radius:14px;overflow:hidden}
+.card img,.placeholder{width:100%;height:190px;object-fit:cover;background:#101b23}
+.placeholder{display:flex;align-items:center;justify-content:center;font-size:55px}
+.body{padding:18px}.price{font-size:23px;font-weight:bold;margin:8px 0}.desc{color:#c9d2d8;min-height:42px}
+.buy{display:block;text-align:center;background:#21e875;color:#071018;text-decoration:none;padding:13px;border-radius:8px;font-weight:bold;margin-top:16px}
+.small{font-size:12px;color:#9eabb3}
+footer{text-align:center;padding:30px;color:#8999a3}
+</style>
+</head>
+<body>
+<header><h1 id="storeName">NEXORA Tecnología</h1><p id="storeSubtitle">Tecnología, accesorios y productos para el hogar</p></header>
+<div class="wrap">
+<div class="toolbar"><button class="admin" onclick="toggleAdmin()">⚙️ Administrar productos</button></div>
+
+<section id="panel" class="panel hidden">
+<h2>Panel de administración</h2>
+<div class="formgrid">
+<div><label>Nombre de la tienda</label><input id="cfgName"></div>
+<div><label>Descripción</label><input id="cfgSubtitle"></div>
+<div><label>WhatsApp con código de país</label><input id="cfgWhatsApp" placeholder="573001234567"></div>
+</div>
+<div class="actions"><button class="save" onclick="saveConfig()">Guardar configuración</button><button class="cancel" onclick="toggleAdmin()">Cerrar</button></div>
+<hr style="border-color:#243642;margin:22px 0">
+<h3 id="formTitle">Agregar producto</h3>
+<div class="formgrid">
+<div><label>Nombre</label><input id="pName"></div>
+<div><label>Precio exacto (COP)</label><input id="pPrice" type="text" inputmode="numeric" placeholder="899900"></div>
+<div><label>Emoji si no usas foto</label><input id="pEmoji" placeholder="📱"></div>
+<div><label>URL de foto opcional</label><input id="pImage" placeholder="https://..."></div>
+</div>
+<div style="margin-top:12px">
+<label>Imagen del producto</label>
+<div id="imagePaste" class="imagePaste" contenteditable="true" tabindex="0">📋 Haz clic aquí y pega una imagen con Ctrl + V</div>
+<div id="imagePreview" class="imagePreview hidden"></div>
+<p class="small">También puedes pegar una imagen copiada desde tu computador. La imagen se guardará dentro de este navegador.</p>
+</div>
+<div style="margin-top:12px"><label>Descripción</label><textarea id="pDesc"></textarea></div>
+<div class="actions"><button class="save" onclick="saveProduct()">Guardar producto</button><button id="cancelEdit" class="cancel hidden" onclick="resetForm()">Cancelar edición</button></div>
+<p class="small">Esta primera versión guarda los cambios en este navegador. Para sincronizarlos entre varios dispositivos, luego podemos conectarla a una base de datos.</p>
+<div id="list"></div>
+</section>
+
+<h2>PRODUCTOS DESTACADOS</h2><p style="color:#b9c6ce">Consulta disponibilidad, características y precios.</p>
+<div id="products" class="grid"></div>
+</div>
+<footer>NEXORA Tecnología · Atención por WhatsApp</footer>
+
+<script>
+const defaults=[
+{name:"Smartphone Pro",price:899900,desc:"Consulta memoria, colores y disponibilidad.",emoji:"📱",image:""},
+{name:"Audífonos Bluetooth",price:89900,desc:"Bluetooth y estuche de carga.",emoji:"🎧",image:""},
+{name:"Smartwatch",price:149900,desc:"Funciones inteligentes y diseño moderno.",emoji:"⌚",image:""},
+{name:"Cargador Rápido",price:39900,desc:"Carga rápida. Consulta compatibilidad.",emoji:"🔌",image:""}];
+let products=JSON.parse(localStorage.getItem("nexora_products")||"null")||defaults;
+let config=JSON.parse(localStorage.getItem("nexora_config")||"null")||{name:"NEXORA Tecnología",subtitle:"Tecnología, accesorios y productos para el hogar",whatsapp:"573001234567"};
+let editing=-1; let pastedImage="";
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
+const money=n=>new Intl.NumberFormat("es-CO",{style:"currency",currency:"COP",maximumFractionDigits:0}).format(n);
+$("pPrice").addEventListener("input",e=>{e.target.value=e.target.value.replace(/\D/g,"");});
+
+$("imagePaste").addEventListener("paste", async e=>{
+  const items=[...(e.clipboardData?.items||[])];
+  const item=items.find(x=>x.type.startsWith("image/"));
+  if(!item)return;
+  e.preventDefault();
+  const file=item.getAsFile();
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    pastedImage=reader.result;
+    $("pImage").value="";
+    showImagePreview(pastedImage);
+  };
+  reader.readAsDataURL(file);
+});
+
+function showImagePreview(src){
+  const box=$("imagePreview");
+  box.classList.remove("hidden");
+  box.innerHTML=`<img src="${src}" alt="Vista previa"><button type="button" onclick="clearPastedImage()">Quitar imagen</button>`;
+}
+function clearPastedImage(){pastedImage="";$("imagePreview").classList.add("hidden");$("imagePreview").innerHTML="";}
+
+function render(){
+$("storeName").textContent=config.name;$("storeSubtitle").textContent=config.subtitle;
+$("products").innerHTML=products.map(p=>`<article class="card">${p.image?`<img src="${esc(p.image)}" alt="${esc(p.name)}">`:`<div class="placeholder">${esc(p.emoji||"📦")}</div>`}<div class="body"><h3>${esc(p.name)}</h3><div class="price">${money(p.price)}</div><div class="desc">${esc(p.desc)}</div><a class="buy" target="_blank" href="https://wa.me/${config.whatsapp}?text=${encodeURIComponent("Hola, estoy interesado en: "+p.name+" - "+money(p.price))}">COMPRAR POR WHATSAPP</a></div></article>`).join("");
+renderList();
+}
+function toggleAdmin(){ $("panel").classList.toggle("hidden"); if(!$("panel").classList.contains("hidden")){ $("cfgName").value=config.name;$("cfgSubtitle").value=config.subtitle;$("cfgWhatsApp").value=config.whatsapp; } }
+function saveConfig(){config={name:$("cfgName").value.trim()||"NEXORA Tecnología",subtitle:$("cfgSubtitle").value.trim(),whatsapp:$("cfgWhatsApp").value.replace(/\D/g,"")};localStorage.setItem("nexora_config",JSON.stringify(config));render();alert("Configuración guardada.");}
+function saveProduct(){
+let p={name:$("pName").value.trim(),price:parseInt($("pPrice").value.replace(/\D/g,""),10)||0,emoji:$("pEmoji").value.trim()||"📦",image:pastedImage||$("pImage").value.trim(),desc:$("pDesc").value.trim()};
+if(!p.name){alert("Escribe el nombre.");return}
+if(editing<0)products.push(p);else products[editing]=p;
+localStorage.setItem("nexora_products",JSON.stringify(products));resetForm();render();alert("Producto guardado.");
+}
+function editProduct(i){let p=products[i];editing=i;pastedImage=p.image||""; if(pastedImage)showImagePreview(pastedImage);$("formTitle").textContent="Editar producto";$("pName").value=p.name;$("pPrice").value=String(p.price);$("pEmoji").value=p.emoji||"";$("pImage").value=p.image||"";$("pDesc").value=p.desc||"";$("cancelEdit").classList.remove("hidden");scrollTo({top:0,behavior:"smooth"});}
+function deleteProduct(i){if(confirm("¿Eliminar "+products[i].name+"?")){products.splice(i,1);localStorage.setItem("nexora_products",JSON.stringify(products));render();}}
+function resetForm(){editing=-1;pastedImage="";$("imagePreview").classList.add("hidden");$("imagePreview").innerHTML="";$("formTitle").textContent="Agregar producto";["pName","pPrice","pEmoji","pImage","pDesc"].forEach(id=>$(id).value="");$("cancelEdit").classList.add("hidden");}
+function renderList(){$("list").innerHTML="<h3>Productos actuales</h3>"+products.map((p,i)=>`<div style="padding:10px 0;border-bottom:1px solid #243642;display:flex;justify-content:space-between;gap:8px;align-items:center"><span>${esc(p.name)} — ${money(p.price)}</span><span><button onclick="editProduct(${i})">✏️</button> <button class="danger" onclick="deleteProduct(${i})">🗑️</button></span></div>`).join("");}
+render();
+</script>
+</body>
+</html>
